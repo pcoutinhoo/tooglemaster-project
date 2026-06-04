@@ -1,0 +1,163 @@
+services:
+
+  # ─── BANCOS DE DADOS ───────────────────────────────────────────────────────
+
+  auth-db:
+    image: postgres:15
+    container_name: auth-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: authdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./auth-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - auth-db-data:/var/lib/postgresql/data
+
+  flag-db:
+    image: postgres:15
+    container_name: flag-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: flagdb
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./flag-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - flag-db-data:/var/lib/postgresql/data
+
+  targeting-db:
+    image: postgres:15
+    container_name: targeting-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: targetingdb
+    ports:
+      - "5435:5432"
+    volumes:
+      - ./targeting-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - targeting-db-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  # ─── LOCALSTACK (SQS + DynamoDB local) ─────────────────────────────────────
+  # Unifica SQS e DynamoDB num único container — elimina problema de conexão
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: localstack
+    environment:
+      - SERVICES=sqs,dynamodb
+      - DEBUG=0
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - LOCALSTACK_HOST=localstack
+    ports:
+      - "4566:4566"
+
+  # Cria fila SQS e tabela DynamoDB automaticamente
+  localstack-setup:
+    image: amazon/aws-cli:2.13.0
+    container_name: localstack-setup
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint: /bin/sh -c "echo 'Aguardando LocalStack...' && until curl -s http://localstack:4566/_localstack/health | grep -q 'sqs'; do echo 'Aguardando...' && sleep 3; done && echo 'Criando fila SQS...' && aws --endpoint-url=http://localstack:4566 sqs create-queue --queue-name toggle-events --region us-east-1 && echo 'Tudo pronto!'"
+    depends_on:
+      - localstack
+  # ─── MICROSSERVIÇOS ────────────────────────────────────────────────────────
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    ports:
+      - "8001:8001"
+    environment:
+      PORT: "8001"
+      DATABASE_URL: "postgres://postgres:postgres@auth-db:5432/authdb?sslmode=disable"
+      MASTER_KEY: "master123"
+    depends_on:
+      - auth-db
+    restart: on-failure
+
+  flag-service:
+    build: ./flag-service
+    container_name: flag-service
+    ports:
+      - "8002:8002"
+    environment:
+      PORT: "8002"
+      DATABASE_URL: "postgres://postgres:postgres@flag-db:5432/flagdb?sslmode=disable"
+      AUTH_SERVICE_URL: "http://auth-service:8001"
+    depends_on:
+      - flag-db
+      - auth-service
+    restart: on-failure
+
+  targeting-service:
+    build: ./targeting-service
+    container_name: targeting-service
+    ports:
+      - "8003:8003"
+    environment:
+      PORT: "8003"
+      DATABASE_URL: "postgres://postgres:postgres@targeting-db:5432/targetingdb?sslmode=disable"
+      AUTH_SERVICE_URL: "http://auth-service:8001"
+    depends_on:
+      - targeting-db
+      - auth-service
+    restart: on-failure
+
+  evaluation-service:
+    build: ./evaluation-service
+    container_name: evaluation-service
+    ports:
+      - "8004:8004"
+    environment:
+      PORT: "8004"
+      REDIS_URL: "redis://redis:6379"
+      FLAG_SERVICE_URL: "http://flag-service:8002"
+      TARGETING_SERVICE_URL: "http://targeting-service:8003"
+      AWS_REGION: "us-east-1"
+      AWS_SQS_URL: "http://localstack:4566/000000000000/toggle-events"
+      SERVICE_API_KEY: "tm_key_054592863187fd5271eb7c6da03e76f1ca0ce2f7789809e31344543ecea608d4"
+      AWS_ACCESS_KEY_ID: "test"
+      AWS_SECRET_ACCESS_KEY: "test"
+      AWS_ENDPOINT_URL: "http://localstack:4566"
+    depends_on:
+      - redis
+      - flag-service
+      - targeting-service
+      - localstack-setup
+    restart: on-failure
+
+  analytics-service:
+    build: ./analytics-service
+    container_name: analytics-service
+    ports:
+      - "8005:8005"
+    environment:
+      PORT: "8005"
+      AWS_REGION: "us-east-1"
+      AWS_SQS_URL: "http://localstack:4566/000000000000/toggle-events"
+      AWS_DYNAMODB_TABLE: "analytics-events"
+      AWS_ACCESS_KEY_ID: "test"
+      AWS_SECRET_ACCESS_KEY: "test"
+      AWS_ENDPOINT_URL: "http://localstack:4566"
+      DYNAMODB_ENDPOINT_URL: "http://localstack:4566"
+    depends_on:
+      - localstack-setup
+    restart: on-failure
+
+volumes:
+  auth-db-data:
+  flag-db-data:
+  targeting-db-data:
