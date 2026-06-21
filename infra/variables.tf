@@ -14,5 +14,15 @@ variable "db_password" {
 }
 
 variable "lab_role_arn" {
-  description = "ARN da LabRole do AWS Academy"
+  description = <<-EOT
+    ARN da LabRole do AWS Academy.
+
+    *** ATENÇÃO: ISSO MUDA TODA VEZ QUE VC ABRE UMA NOVA SESSÃO DO ACADEMY ***
+    O account ID é diferente a cada sessão. ANTES de rodar terraform apply, sempre rode:
+
+      aws sts get-caller-identity
+      aws iam get-role --role-name LabRole --query 'Role.Arn' --output text
+
+    E atualize o valor no terraform.tfvars com o ARN retornado.
+  EOT
 }

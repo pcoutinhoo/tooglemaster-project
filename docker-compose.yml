@@ -148,7 +148,7 @@ services:
       PORT: "8005"
       AWS_REGION: "us-east-1"
       AWS_SQS_URL: "http://localstack:4566/000000000000/toggle-events"
-      AWS_DYNAMODB_TABLE: "analytics-events"
+      AWS_DYNAMODB_TABLE: "ToggleMasterAnalytics"
       AWS_ACCESS_KEY_ID: "test"
       AWS_SECRET_ACCESS_KEY: "test"
       AWS_ENDPOINT_URL: "http://localstack:4566"
