@@ -22,7 +22,7 @@ SERVICES="auth-service flag-service targeting-service evaluation-service analyti
 
 for svc in $SERVICES; do
   echo ">>> Building $svc"
-  docker build -t $svc ./$svc
+  docker build --platform linux/amd64 -t $svc ./$svc
   docker tag $svc:latest $ECR/togglemaster/$svc:latest
   docker push $ECR/togglemaster/$svc:latest
   echo ">>> $svc done"

@@ -85,7 +85,7 @@ type: Opaque
 data:
   REDIS_URL: ${REDIS_B64}
   AWS_SQS_URL: ${SQS_B64}
-  SERVICE_API_KEY: PLACEHOLDER_RODAR_update-api-key.sh_DEPOIS
+  SERVICE_API_KEY: $(b64 "PLACEHOLDER")
 
 ---
 apiVersion: v1

@@ -18,7 +18,7 @@ fi
 # Atualiza ou adiciona a linha lab_role_arn no tfvars
 if grep -q "^lab_role_arn" "$TFVARS_FILE"; then
   # Usa | como delimitador no sed porque o ARN contém /
-  sed -i "s|^lab_role_arn.*|lab_role_arn = \"$LAB_ROLE_ARN\"|" "$TFVARS_FILE"
+  sed -i '' "s|^lab_role_arn.*|lab_role_arn = \"$LAB_ROLE_ARN\"|" "$TFVARS_FILE"
 else
   echo "lab_role_arn = \"$LAB_ROLE_ARN\"" >> "$TFVARS_FILE"
 fi
