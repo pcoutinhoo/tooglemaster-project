@@ -77,7 +77,11 @@ func main() {
 	// Cliente SQS (AWS SDK)
 	var sqsSvc *sqs.SQS
 	if sqsQueueURL != "" {
-		sess, err := session.NewSession(&aws.Config{Region: aws.String(awsRegion)})
+		awsCfg := &aws.Config{Region: aws.String(awsRegion)}
+		if endpoint := os.Getenv("AWS_ENDPOINT_URL"); endpoint != "" {
+			awsCfg.Endpoint = aws.String(endpoint)
+		}
+		sess, err := session.NewSession(awsCfg)
 		if err != nil {
 			log.Fatalf("Não foi possível criar sessão AWS: %v", err)
 		}
