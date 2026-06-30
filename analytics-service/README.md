@@ -47,7 +47,7 @@ PORT="8005"
 
 # --- Configuração da AWS ---
 # Cole a URL da fila SQS que você criou
-AWS_SQS_URL="httpsiso://[sqs.us-east-1.amazonaws.com/123456789012/sua-fila](https://sqs.us-east-1.amazonaws.com/123456789012/sua-fila)"
+AWS_SQS_URL="https://sqs.us-east-1.amazonaws.com/123456789012/sua-fila"
 
 # Nome da tabela DynamoDB que você criou
 AWS_DYNAMODB_TABLE="ToggleMasterAnalytics"
