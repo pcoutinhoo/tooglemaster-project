@@ -1,5 +1,22 @@
-infra/.terraform/
-*.tfstate
-*.tfstate.*
-.history
-*.tfstate.backup
+# Credenciais e chaves geradas em runtime
+api_key.txt
+account_id.txt
+
+# Secrets gerados pelo generate-secrets.sh — contém senhas em base64
+infra/k8s/secrets.yaml
+k8s/secrets.yaml
+
+# Binário do hey (cada pessoa instala localmente)
+tools/hey
+tools/hey.exe
+
+# Variáveis de ambiente locais
+.env
+.env.*
+!.env.example
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
