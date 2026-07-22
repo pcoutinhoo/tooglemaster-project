@@ -1,17 +1,12 @@
-# State local — deve ficar no backend remoto (S3), nunca no git
 terraform.tfstate
 terraform.tfstate.backup
 
-# Valores reais das variáveis — contém senhas e ARNs sensíveis
 terraform.tfvars
 
-# Cache de providers e plugins — gerado automaticamente pelo terraform init
 .terraform/
 .terraform.lock.hcl
 
-# Arquivos de crash do Terraform
 crash.log
 crash.*.log
 
-# Planos gerados localmente
 *.tfplan
