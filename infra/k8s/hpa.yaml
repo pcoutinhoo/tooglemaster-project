@@ -16,9 +16,7 @@ spec:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70
-
----
+          averageUtilization: 30
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -30,7 +28,7 @@ spec:
     kind: Deployment
     name: analytics-service
   minReplicas: 1
-  maxReplicas: 4
+  maxReplicas: 6
   metrics:
     - type: Resource
       resource:

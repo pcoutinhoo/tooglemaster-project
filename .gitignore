@@ -1,3 +1,5 @@
 infra/.terraform/
 *.tfstate
 *.tfstate.*
+.history
+*.tfstate.backup

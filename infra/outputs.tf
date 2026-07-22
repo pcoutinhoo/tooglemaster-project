@@ -40,3 +40,18 @@ output "ecr_urls" {
   value       = { for k, v in aws_ecr_repository.services : k => v.repository_url }
   description = "URLs dos repositórios ECR"
 }
+
+output "eks_cluster_name" {
+  value       = aws_eks_cluster.main.name
+  description = "Nome do cluster EKS"
+}
+
+output "eks_cluster_endpoint" {
+  value       = aws_eks_cluster.main.endpoint
+  description = "Endpoint da API do cluster EKS"
+}
+
+output "eks_cluster_status" {
+  value       = aws_eks_cluster.main.status
+  description = "Status do cluster"
+}
