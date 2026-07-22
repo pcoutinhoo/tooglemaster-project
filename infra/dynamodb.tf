@@ -1,8 +1,8 @@
 resource "aws_dynamodb_table" "analytics" {
-  name         = "ToggleMasterAnalytics"  # nome exato que o código espera
-  billing_mode = "PAY_PER_REQUEST"        # paga só pelo que usa — ótimo para Academy
+  name         = "analytics-events"  # deve corresponder à variável AWS_DYNAMODB_TABLE no ConfigMap e docker-compose
+  billing_mode = "PAY_PER_REQUEST"   # paga só pelo que usa — ótimo para Academy
 
-  # Chave primária que o analytics-service usa (definida no README do repo)
+  # Chave primária que o analytics-service usa
   hash_key = "event_id"
 
   attribute {
@@ -10,5 +10,5 @@ resource "aws_dynamodb_table" "analytics" {
     type = "S"   # S = String
   }
 
-  tags = { Name = "ToggleMasterAnalytics" }
+  tags = { Name = "analytics-events" }
 }

@@ -9,6 +9,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: authdb
+      POSTGRES_HOST_AUTH_METHOD: md5
     ports:
       - "5433:5432"
     volumes:
@@ -22,6 +23,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: flagdb
+      POSTGRES_HOST_AUTH_METHOD: md5
     ports:
       - "5434:5432"
     volumes:
@@ -35,6 +37,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: targetingdb
+      POSTGRES_HOST_AUTH_METHOD: md5
     ports:
       - "5435:5432"
     volumes:
@@ -128,7 +131,7 @@ services:
       TARGETING_SERVICE_URL: "http://targeting-service:8003"
       AWS_REGION: "us-east-1"
       AWS_SQS_URL: "http://localstack:4566/000000000000/toggle-events"
-      SERVICE_API_KEY: "tm_key_054592863187fd5271eb7c6da03e76f1ca0ce2f7789809e31344543ecea608d4"
+      SERVICE_API_KEY: "tm_key_f4b7279f03c58175a8800bdb3d6fc0e92135282c7f43db8e213f1c69aded895d"
       AWS_ACCESS_KEY_ID: "test"
       AWS_SECRET_ACCESS_KEY: "test"
       AWS_ENDPOINT_URL: "http://localstack:4566"
