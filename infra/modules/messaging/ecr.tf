@@ -1,5 +1,3 @@
-# Um repositório ECR para cada microsserviço
-# ECR é o "Docker Hub privado" da AWS — onde suas imagens ficam guardadas
 locals {
   services = ["auth-service", "flag-service", "targeting-service", "evaluation-service", "analytics-service"]
 }

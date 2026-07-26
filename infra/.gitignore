@@ -10,3 +10,5 @@ crash.log
 crash.*.log
 
 *.tfplan
+backend_bucket.txt
+infra/backend.tf

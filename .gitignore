@@ -14,3 +14,4 @@ tools/hey.exe
 .DS_Store
 
 Thumbs.db
+setup-env.sh

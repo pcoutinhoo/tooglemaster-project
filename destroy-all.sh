@@ -1,68 +1,35 @@
 #!/bin/bash
-# destroy-all.sh
-# Destroy seguro e completo. Remove o Load Balancer criado pelo Helm ANTES
-# de rodar terraform destroy — resolve o erro recorrente de DependencyViolation
-# na subnet/Internet Gateway. Compatível com Windows (Git Bash) e macOS.
-
+# Uso: bash destroy-all.sh              -> destrói só a app
+#      bash destroy-all.sh --with-backend -> destrói também o bucket S3
 
 set -e
+WITH_BACKEND=false
+[ "$1" = "--with-backend" ] && WITH_BACKEND=true
 
-echo "================================================================"
-echo " PASSO 1/4 — Removendo Nginx Ingress (e o Load Balancer com ele)"
-echo "================================================================"
-
-# Tenta desinstalar o Helm release se o kubectl ainda responder
+echo "=== 1/3 Removendo Ingress/LB ==="
 if kubectl cluster-info &>/dev/null 2>&1; then
   if helm list -n ingress-nginx 2>/dev/null | grep -q ingress-nginx; then
-    echo ">>> Desinstalando ingress-nginx via Helm..."
     helm uninstall ingress-nginx -n ingress-nginx
-    echo ">>> Aguardando 90s para a AWS remover o Load Balancer e suas ENIs..."
-    echo ">>> (não pule essa espera — as subnets só liberam depois que as ENIs somem)"
+    echo ">>> Aguardando 90s (ENIs do LB)..."
     sleep 90
-  else
-    echo ">>> Nenhum release ingress-nginx encontrado. Pulando."
   fi
-else
-  echo ">>> kubectl não responde (cluster pode já estar fora). Pulando Helm."
 fi
 
-echo ""
-echo "================================================================"
-echo " PASSO 2/4 — Verificando Load Balancers pendentes"
-echo "================================================================"
-echo ">>> Load Balancers ativos (elbv2 — NLB/ALB):"
-aws elbv2 describe-load-balancers --region us-east-1 \
-  --query 'LoadBalancers[*].[LoadBalancerName,DNSName]' \
-  --output table 2>/dev/null || echo "(nenhum ou permissão negada)"
-
-echo ""
-echo ">>> Load Balancers clássicos (ELB):"
-aws elb describe-load-balancers --region us-east-1 \
-  --query 'LoadBalancerDescriptions[*].LoadBalancerName' \
-  --output table 2>/dev/null || echo "(nenhum ou permissão negada)"
-
-echo ""
-echo "!!! Se algum Load Balancer do projeto aparecer acima, delete manualmente:"
-echo "!!!   aws elbv2 delete-load-balancer --load-balancer-arn ARN --region us-east-1"
-echo "!!!   aws elb delete-load-balancer --load-balancer-name NOME --region us-east-1"
-echo ""
-read -p ">>> Pressione ENTER quando confirmar que não há LBs pendentes (ou Ctrl+C para cancelar)..."
-
-echo ""
-echo "================================================================"
-echo " PASSO 3/4 — Terraform destroy"
-echo "================================================================"
-cd infra
+echo "=== 2/3 Terraform destroy (infra/app) ==="
+cd infra/app
 terraform destroy -auto-approve
-cd ..
+cd ../..
 
-echo ""
-echo "================================================================"
-echo " PASSO 4/4 — Limpando arquivos locais de estado"
-echo "================================================================"
+echo "=== 3/3 Limpeza local ==="
 rm -f account_id.txt api_key.txt
-rm -f infra/k8s/secrets.yaml
-echo ">>> Arquivos locais limpos."
+rm -f infra/app/k8s/secrets.yaml
 
-echo ""
-echo ">>> Destroy completo! Infra removida. Pronto para recriar com: bash run-all.sh"
+if [ "$WITH_BACKEND" = true ]; then
+  echo ">>> Destruindo bucket S3 (bootstrap)..."
+  cd infra/bootstrap
+  terraform destroy -auto-approve
+  cd ../..
+  rm -f infra/app/backend.tf
+fi
+
+echo ">>> Destroy completo."
