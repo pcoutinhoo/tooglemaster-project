@@ -1,4 +1,5 @@
 import os
+
 from unittest.mock import patch, MagicMock
 
 os.environ["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test_db"
