@@ -6,9 +6,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/pcoutinhoo/tooglemaster-project.git
-    targetRevision: feature/fase-3
-    path: gitops
+    repoURL: https://github.com/0157-0/tooglemaster-gitops.git
+    targetRevision: main
+    path: .
   destination:
     server: https://kubernetes.default.svc
     namespace: togglemaster
