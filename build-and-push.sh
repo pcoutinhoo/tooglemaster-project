@@ -32,10 +32,10 @@ for svc in $SERVICES; do
   echo ">>> [$svc] Building..."
   # --platform linux/amd64 garante que a imagem funcione nos nodes Linux do EKS
   # mesmo que você esteja buildando num Mac M1/M2 (ARM)
-  docker build --platform linux/amd64 -t "$svc" "./$svc"
-  docker tag "$svc:latest" "$ECR/togglemaster/$svc:latest"
+  docker build --platform linux/amd64 -t "$svc:v1.0.0" "./$svc"
+  docker tag "$svc:v1.0.0" "$ECR/togglemaster/$svc:v1.0.0"  
   echo ">>> [$svc] Pushing..."
-  docker push "$ECR/togglemaster/$svc:latest"
+  docker push "$ECR/togglemaster/$svc:v1.0.0"
   echo ">>> [$svc] OK"
 done
 
