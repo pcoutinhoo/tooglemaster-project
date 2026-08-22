@@ -92,7 +92,6 @@ def process_message(message):
             ReceiptHandle=message['ReceiptHandle']
         )
 
-
     except json.JSONDecodeError:
         log.error(f"Erro ao decodificar JSON da mensagem: {message['MessageId']}")
     except ClientError as e:
