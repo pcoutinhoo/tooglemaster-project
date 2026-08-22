@@ -26,7 +26,7 @@ if not all([AWS_REGION, SQS_QUEUE_URL, DYNAMODB_TABLE_NAME]):
     sys.exit(1)
 
 try:
-    ## endpoint_url aponta para LocalStack quando definido, ou AWS real quando None
+    # endpoint_url aponta para LocalStack quando definido, ou AWS real quando None
     sqs_client = boto3.client(
         "sqs",
         region_name=AWS_REGION,
