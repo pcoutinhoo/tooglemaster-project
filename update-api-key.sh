@@ -22,13 +22,16 @@ RESPONSE=$(curl -s --request POST \
   --header 'Authorization: Bearer master123' \
   --header 'Content-Type: application/json' \
   --data '{"name": "tech-challenge-key"}')
-
 echo ">>> Resposta: $RESPONSE"
 
-API_KEY=$(echo "$RESPONSE" | grep -o '"key":"[^"]*' | cut -d'"' -f4)
+echo ">>> Extraindo API KEY..."
+
+API_KEY=$(echo "$RESPONSE" | sed -n 's/.*"key":"\([^"]*\)".*/\1/p')
+
+echo ">>> API KEY encontrada: $API_KEY"
 
 if [ -z "$API_KEY" ]; then
-  echo "!!! Não foi possível extrair a API key. Verifique se o auth-service está de pé e as migrations rodaram."
+  echo "!!! Não foi possível extrair a API key."
   exit 1
 fi
 

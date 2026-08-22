@@ -1,0 +1,14 @@
+terraform.tfstate
+terraform.tfstate.backup
+
+terraform.tfvars
+
+.terraform/
+.terraform.lock.hcl
+
+crash.log
+crash.*.log
+
+*.tfplan
+backend_bucket.txt
+infra/backend.tf

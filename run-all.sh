@@ -1,120 +1,55 @@
 #!/bin/bash
-# run-all.sh
-# Script THE FLASH HAHAHA — roda a sequência inteira do zero, na ordem certa,
-# com checagens de pasta embutidas 
-# RODAR SEMPRE DA RAIZ DO PROJETO (onde estão as pastas auth-service/,
-# flag-service/, infra/, etc.)
-#
-# Uso: bash run-all.sh
-
 set -e
-
 PROJECT_ROOT=$(pwd)
 
-# --- confirma que está na pasta certa ---
-if [ ! -d "infra" ] || [ ! -d "auth-service" ]; then
-  echo "!!! ERRO: rode este script da RAIZ do projeto."
-  echo "!!! Esperado encontrar as pastas infra/ e auth-service/ aqui: $PROJECT_ROOT"
-  exit 1
-fi
+[ -d "infra" ] && [ -d "auth-service" ] || { echo "!!! Rode da RAIZ do projeto."; exit 1; }
 
-echo "================================================================"
-echo " PASSO 1/9 — Verificando Helm"
-echo "================================================================"
-if ! command -v helm &> /dev/null; then
-  echo "!!! Helm não encontrado. Rode: bash 01-install-helm.sh"
-  echo "!!! Depois FECHE e REABRA o terminal, e rode este script de novo."
-  exit 1
-fi
-echo ">>> Helm OK: $(helm version --short 2>/dev/null || helm version)"
+echo "=== 1/10 Helm ==="
+command -v helm &>/dev/null || { echo "!!! Rode: bash 01-install-helm.sh (depois reabra o terminal)"; exit 1; }
 
-echo "================================================================"
-echo " PASSO 2/9 — Verificando conta AWS e atualizando LabRole"
-echo "================================================================"
-cd "$PROJECT_ROOT/infra"
-bash 00-check-account.sh
-cd "$PROJECT_ROOT"
+echo "=== 2/10 Conta AWS + LabRole ==="
+source setup-env.sh
+(cd infra && bash 00-check-account.sh)
 
-echo "================================================================"
-echo " PASSO 3/9 — Aplicando infraestrutura Terraform"
-echo "================================================================"
-echo ">>> Isso demora ~20-25 min (RDS e EKS são lentos). Não interrompa."
-cd "$PROJECT_ROOT/infra"
+echo "=== 3/10 Backend S3 (bootstrap) ==="
+bash setup-backend.sh
+
+echo "=== 4/10 Terraform apply (infra/app) ==="
+cd infra/app
 terraform init
 terraform plan
-read -p ">>> Confira o plan acima. Pressione ENTER para aplicar, ou Ctrl+C para cancelar..."
+read -p ">>> ENTER para aplicar, Ctrl+C para cancelar..."
 terraform apply -auto-approve
 cd "$PROJECT_ROOT"
 
-echo "================================================================"
-echo " PASSO 4/9 — Configurando kubectl"
-echo "================================================================"
+echo "=== 5/10 kubectl ==="
 aws eks update-kubeconfig --region us-east-1 --name togglemaster-cluster
-echo ">>> Aguardando nodes ficarem Ready..."
 kubectl wait --for=condition=Ready nodes --all --timeout=180s
-kubectl get nodes
 
-echo "================================================================"
-echo " PASSO 5/9 — Build e push das imagens Docker"
-echo "================================================================"
+echo "=== 6/10 Build e push imagens ==="
 bash build-and-push.sh
 
-echo "================================================================"
-echo " PASSO 6/9 — Instalando Metrics Server + Nginx Ingress"
-echo "================================================================"
+echo "=== 7/10 Metrics Server + Nginx Ingress ==="
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx 2>/dev/null || true
 helm repo update
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
-  --namespace ingress-nginx --create-namespace \
-  --wait --timeout 5m
+  --namespace ingress-nginx --create-namespace --wait --timeout 5m
 
-echo ">>> Aguardando Load Balancer externo..."
-for i in $(seq 1 30); do
-  LB_CHECK=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-  if [ -n "$LB_CHECK" ]; then
-    echo ">>> Load Balancer pronto: $LB_CHECK"
-    break
-  fi
-  sleep 5
-done
-
-echo "================================================================"
-echo " PASSO 7/9 — Gerando secrets a partir dos outputs do Terraform"
-echo "================================================================"
+echo "=== 8/10 Secrets + Deploy K8s ==="
 bash generate-secrets.sh
-
-echo "================================================================"
-echo " PASSO 8/9 — Aplicando manifestos Kubernetes"
-echo "================================================================"
 bash deploy-k8s.sh
 
-echo "================================================================"
-echo " PASSO 9/9 — Rodando migrations SQL"
-echo "================================================================"
+echo "=== 9/10 Migrations ==="
 bash run-migrations.sh
-kubectl rollout restart deployment/auth-service -n togglemaster
-kubectl rollout restart deployment/flag-service -n togglemaster
-kubectl rollout restart deployment/targeting-service -n togglemaster
+kubectl rollout restart deployment/auth-service deployment/flag-service deployment/targeting-service -n togglemaster
 kubectl rollout status deployment/auth-service -n togglemaster --timeout=120s
 kubectl rollout status deployment/flag-service -n togglemaster --timeout=120s
 kubectl rollout status deployment/targeting-service -n togglemaster --timeout=120s
 
-echo "================================================================"
-echo " QUASE LÁ — falta só gerar a API key"
-echo "================================================================"
+echo "=== 10/10 API key + teste ==="
 LB=$(kubectl get ingress togglemaster-ingress -n togglemaster -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-echo ">>> Load Balancer: http://$LB"
 bash update-api-key.sh "http://$LB"
-
-echo "================================================================"
-echo " TUDO PRONTO. Rodando teste de fluxo completo..."
-echo "================================================================"
 bash test-fluxo-completo.sh "http://$LB"
 
-echo ""
-echo ">>> INFRA COMPLETA E VALIDADA."
-echo ">>> Load Balancer: http://$LB"
-echo ">>> API Key salva em: api_key.txt"
-echo ">>> Pronto para teste de carga e gravação do vídeo."
+echo ">>> PRONTO. LB: http://$LB"
