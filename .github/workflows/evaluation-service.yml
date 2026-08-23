@@ -113,7 +113,7 @@ jobs:
     needs: build-and-push
 
     steps:
-      - run: git clone -b master https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pcoutinhoo/togglemaster-gitops.git
+      - run: git clone -b develop https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pcoutinhoo/togglemaster-gitops.git
 
       - run: |
           cd togglemaster-gitops

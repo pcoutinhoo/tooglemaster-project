@@ -125,7 +125,7 @@ jobs:
     steps:
       - name: Clone GitOps repository
         run: |
-          git clone -b master https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pcoutinhoo/togglemaster-gitops.git
+          git clone -b develop https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pcoutinhoo/togglemaster-gitops.git
 
       - name: Update image tag
         run: |
