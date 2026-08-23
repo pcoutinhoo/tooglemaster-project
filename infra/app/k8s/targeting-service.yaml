@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: targeting-service
-          image: 484338296618.dkr.ecr.us-east-1.amazonaws.com/togglemaster/targeting-service:latest
+          image: 119486119152.dkr.ecr.us-east-1.amazonaws.com/togglemaster/targeting-service:latest
           ports:
             - containerPort: 8003
           resources:
