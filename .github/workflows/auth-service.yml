@@ -125,7 +125,7 @@ jobs:
     steps:
       - name: Clone GitOps repository
         run: |
-          git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/MatheusYurirs/togglemaster-gitops
+          git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pcoutinhoo/togglemaster-gitops.git
 
       - name: Update image tag
         run: |
@@ -133,12 +133,12 @@ jobs:
 
           sed -i \
             "s|auth-service:.*|auth-service:${{ needs.build-and-push.outputs.image_tag }}|g" \
-            gitops/auth-service.yaml
+            k8s/auth-service.yaml
 
           git config user.email "ci@togglemaster.com"
           git config user.name "GitHub Actions CI"
 
-          git add gitops/auth-service.yaml
+          git add k8s/auth-service.yaml
 
           git commit \
             -m "ci: atualiza auth-service para tag ${{ needs.build-and-push.outputs.image_tag }}" \

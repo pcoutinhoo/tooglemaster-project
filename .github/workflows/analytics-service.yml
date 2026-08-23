@@ -87,12 +87,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-push
     steps:
-      - run: git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/MatheusYurirs/togglemaster-gitops
+      - run: git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pcoutinhoo/togglemaster-gitops.git
       - run: |
           cd togglemaster-gitops
-          sed -i "s|analytics-service:.*|analytics-service:${{ needs.build-and-push.outputs.image_tag }}|g" gitops/analytics-service.yaml
+          sed -i "s|analytics-service:.*|analytics-service:${{ needs.build-and-push.outputs.image_tag }}|g" k8s/analytics-service.yaml
           git config user.email "ci@togglemaster.com"
           git config user.name "GitHub Actions CI"
-          git add gitops/analytics-service.yaml
+          git add k8s/evaluation-service.yaml
           git commit -m "ci: atualiza analytics-service para tag ${{ needs.build-and-push.outputs.image_tag }}" || echo "sem mudancas"
           git push

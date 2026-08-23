@@ -91,13 +91,13 @@ jobs:
     needs: build-and-push
     steps:
       - name: Clone gitops repo
-        run: git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/MatheusYurirs/togglemaster-gitops
+        run: git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pcoutinhoo/togglemaster-gitops.git
       - name: Update image tag
         run: |
           cd togglemaster-gitops
-          sed -i "s|flag-service:.*|flag-service:${{ needs.build-and-push.outputs.image_tag }}|g" gitops/flag-service.yaml
+          sed -i "s|flag-service:.*|flag-service:${{ needs.build-and-push.outputs.image_tag }}|g" k8s/flag-service.yaml
           git config user.email "ci@togglemaster.com"
           git config user.name "GitHub Actions CI"
-          git add gitops/flag-service.yaml
+          git add k8s/flag-service.yaml
           git commit -m "ci: atualiza flag-service para tag ${{ needs.build-and-push.outputs.image_tag }}" || echo "sem mudancas"
           git push
