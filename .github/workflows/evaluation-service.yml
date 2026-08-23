@@ -113,17 +113,17 @@ jobs:
     needs: build-and-push
 
     steps:
-      - run: git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pcoutinhoo/togglemaster-gitops.git
+      - run: git clone -b master https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pcoutinhoo/togglemaster-gitops.git
 
       - run: |
           cd togglemaster-gitops
 
-          sed -i "s|evaluation-service:.*|evaluation-service:${{ needs.build-and-push.outputs.image_tag }}|g" gitops/evaluation-service.yaml
+          sed -i "s|evaluation-service:.*|evaluation-service:${{ needs.build-and-push.outputs.image_tag }}|g" k8s/evaluation-service.yaml
 
           git config user.email "ci@togglemaster.com"
           git config user.name "GitHub Actions CI"
 
-          git add gitops/evaluation-service.yaml
+          git add k8s/evaluation-service.yaml
 
           git commit \
             -m "ci: atualiza evaluation-service para tag ${{ needs.build-and-push.outputs.image_tag }}" \
