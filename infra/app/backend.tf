@@ -1,8 +1,6 @@
 terraform {
   backend "s3" {
-    
-    bucket       = "togglemaster-tfstate-445903040232"
-
+    bucket       = "togglemaster-tfstate-119486119152"
     key          = "togglemaster/terraform.tfstate"
     region       = "us-east-1"
     use_lockfile = true

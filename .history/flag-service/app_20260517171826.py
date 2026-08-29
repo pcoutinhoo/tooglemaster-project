@@ -9,10 +9,11 @@ from dotenv import load_dotenv
 from functools import wraps
 import logging
 
+# Configura o logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-## Carrega .env para desenvolvimento local
+# Carrega .env para desenvolvimento local
 load_dotenv() 
 
 app = Flask(__name__)
