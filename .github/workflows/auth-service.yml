@@ -58,7 +58,6 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           working-directory: ${{ env.SERVICE_DIR }}
-          version: v1.61
           args: --timeout=5m
           skip-cache: true
 
