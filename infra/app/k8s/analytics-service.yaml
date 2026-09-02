@@ -15,7 +15,9 @@ spec:
     spec:
       containers:
         - name: analytics-service
-          image: 119486119152.dkr.ecr.us-east-1.amazonaws.com/togglemaster/analytics-service:latest
+
+          image: 676508800412.dkr.ecr.us-east-1.amazonaws.com/togglemaster/analytics-service:v1.0.0
+          
           ports:
             - containerPort: 8005
           resources:
