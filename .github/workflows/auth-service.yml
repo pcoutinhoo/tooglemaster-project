@@ -49,17 +49,17 @@ jobs:
         with:
           go-version: '1.21'
 
-      # Cada job roda em um runner separado,
-      # então as dependências precisam ser resolvidas novamente.
-      - name: Download dependencies
-        run: go mod tidy
-
       - uses: actions/cache@v4
         with:
           path: |
             ~/go/pkg/mod
             ~/go/bin
           key: golangci-lint-src-${{ runner.os }}
+
+      # Cada job roda em um runner separado,
+      # então as dependências precisam ser resolvidas novamente.
+      - name: Download dependencies
+        run: go mod tidy
 
       # golangci-lint-action baixa um binario pre-compilado, que ainda nao
       # existe compilado com a versao de Go exigida por este modulo (pgx v5.9+
