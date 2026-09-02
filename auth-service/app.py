@@ -1,1 +1,1 @@
-# teste gosec fix v2
+# teste golangci-lint fix
