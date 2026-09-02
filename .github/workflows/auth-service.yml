@@ -54,12 +54,21 @@ jobs:
       - name: Download dependencies
         run: go mod tidy
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+      - uses: actions/cache@v4
         with:
-          working-directory: ${{ env.SERVICE_DIR }}
-          args: --timeout=5m
-          skip-cache: true
+          path: |
+            ~/go/pkg/mod
+            ~/go/bin
+          key: golangci-lint-src-${{ runner.os }}
+
+      # golangci-lint-action baixa um binario pre-compilado, que ainda nao
+      # existe compilado com a versao de Go exigida por este modulo (pgx v5.9+
+      # requer Go 1.25). Compilando na hora, com go install, o toolchain local
+      # (GOTOOLCHAIN=auto) baixa e usa a versao certa sozinho.
+      - name: Run golangci-lint
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          golangci-lint run --timeout=5m
 
   security:
     name: Security Scan (SAST & SCA)
