@@ -44,17 +44,28 @@ jobs:
       - run: flake8 . --max-line-length=120 --exit-zero
 
   security:
-    name: Security Scan (Trivy)
+    name: Security Scan (SAST & SCA)
     runs-on: ubuntu-latest
     needs: lint
+    defaults:
+      run:
+        working-directory: ${{ env.SERVICE_DIR }}
     steps:
       - uses: actions/checkout@v4
-      - uses: aquasecurity/trivy-action@master
+      - name: Trivy filesystem scan (SCA)
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: ${{ env.SERVICE_DIR }}
           severity: CRITICAL
           exit-code: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Bandit (SAST)
+        run: |
+          pip install bandit
+          bandit -r . -lll
 
   build-and-push:
     name: Docker Build & Push
@@ -66,7 +77,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: vars
-        run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+        run: echo "tag=v1.0.0-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -77,6 +88,13 @@ jobs:
         id: ecr-login
       - name: Build image
         run: docker build -t ${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }} ${{ env.SERVICE_DIR }}
+      - name: Trivy image scan (Container Scan)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: ${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }}
+          severity: CRITICAL
+          exit-code: 1
       - name: Push to ECR
         run: |
           docker tag ${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }} ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }}

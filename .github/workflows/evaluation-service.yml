@@ -57,19 +57,32 @@ jobs:
           skip-cache: true
 
   security:
-    name: Security Scan (Trivy)
+    name: Security Scan (SAST & SCA)
     runs-on: ubuntu-latest
     needs: lint
+    defaults:
+      run:
+        working-directory: ${{ env.SERVICE_DIR }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: aquasecurity/trivy-action@master
+      - name: Trivy filesystem scan (SCA)
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: ${{ env.SERVICE_DIR }}
           severity: CRITICAL
           exit-code: 1
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: gosec (SAST)
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          gosec -severity high ./...
 
   build-and-push:
     name: Docker Build & Push
@@ -84,7 +97,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - id: vars
-        run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+        run: echo "tag=v1.0.0-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -98,6 +111,14 @@ jobs:
 
       - name: Build image
         run: docker build -t ${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }} ${{ env.SERVICE_DIR }}
+
+      - name: Trivy image scan (Container Scan)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: ${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }}
+          severity: CRITICAL
+          exit-code: 1
 
       - name: Push to ECR
         run: |
