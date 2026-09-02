@@ -82,6 +82,9 @@ jobs:
       - name: Download dependencies
         run: go mod tidy
 
+      - name: Build (garante que os pacotes estão resolvidos para o gosec)
+        run: go build ./...
+
       - name: gosec (SAST)
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@latest
