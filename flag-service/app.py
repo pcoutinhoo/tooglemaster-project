@@ -12,7 +12,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-# Carrega .env para desenvolvimento local
+## Carrega .env para desenvolvimento local
 load_dotenv() 
 
 app = Flask(__name__)
@@ -222,4 +222,4 @@ def delete_flag(name):
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 8002))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=False)# trigger pipeline

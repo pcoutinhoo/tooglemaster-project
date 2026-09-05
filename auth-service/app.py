@@ -1,0 +1,1 @@
+# teste golangci-lint fix

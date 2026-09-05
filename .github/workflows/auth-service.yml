@@ -78,6 +78,7 @@ jobs:
         uses: securego/gosec@master
         with:
           args: -severity high ./...
+
   build-and-push:
     name: Docker Build & Push
     runs-on: ubuntu-latest

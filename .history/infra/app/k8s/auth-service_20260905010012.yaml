@@ -15,7 +15,11 @@ spec:
     spec:
       containers:
         - name: auth-service
+<<<<<<< Updated upstream
+          image: 119486119152.dkr.ecr.us-east-1.amazonaws.com/togglemaster/auth-service:latest
+=======
           image: 676508800412.dkr.ecr.us-east-1.amazonaws.com/togglemaster/auth-service:v1.0.0
+>>>>>>> Stashed changes
           ports:
             - containerPort: 8001
           resources:
