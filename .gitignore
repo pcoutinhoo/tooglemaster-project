@@ -16,3 +16,4 @@ tools/hey.exe
 
 Thumbs.db
 setup-env.sh
+infra/bootstrap/terraform.tfstate*
