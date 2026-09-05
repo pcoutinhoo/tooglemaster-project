@@ -3,10 +3,14 @@ name: evaluation-service CI/CD
 on:
   push:
     branches: [develop, main]
-    paths: ['evaluation-service/**']
+    paths:
+      - 'evaluation-service/**'
+      - '.github/workflows/evaluation-service.yml'
   pull_request:
     branches: [develop, main]
-    paths: ['evaluation-service/**']
+    paths:
+      - 'evaluation-service/**'
+      - '.github/workflows/evaluation-service.yml'
 
 env:
   AWS_REGION: us-east-1
