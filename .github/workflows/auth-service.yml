@@ -20,19 +20,13 @@ jobs:
     defaults:
       run:
         working-directory: ${{ env.SERVICE_DIR }}
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-
-      - name: Download dependencies
-        run: go mod tidy
-
-      - name: Run tests
-        run: go test ./... -v
+      - run: go mod tidy
+      - run: go test ./... -v
 
   lint:
     name: Lint
@@ -41,54 +35,58 @@ jobs:
     defaults:
       run:
         working-directory: ${{ env.SERVICE_DIR }}
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-
-      # Cada job roda em um runner separado,
-      # então as dependências precisam ser resolvidas novamente.
-      - name: Download dependencies
-        run: go mod tidy
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+      - run: go mod tidy
+      - uses: golangci/golangci-lint-action@v6
         with:
           working-directory: ${{ env.SERVICE_DIR }}
           version: v1.61
           args: --timeout=5m
           skip-cache: true
 
-  security:
-    name: Security Scan (Trivy)
+  security-sca:
+    name: Security Scan - SCA (Trivy fs)
     runs-on: ubuntu-latest
     needs: lint
-
     steps:
       - uses: actions/checkout@v4
-
-      - uses: aquasecurity/trivy-action@master
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: ${{ env.SERVICE_DIR }}
           severity: CRITICAL
           exit-code: 1
 
+  security-sast:
+    name: Security Scan - SAST (gosec)
+    runs-on: ubuntu-latest
+    needs: lint
+    defaults:
+      run:
+        working-directory: ${{ env.SERVICE_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Run gosec
+        uses: securego/gosec@master
+        with:
+          args: -severity high ./...
   build-and-push:
     name: Docker Build & Push
     runs-on: ubuntu-latest
-    needs: security
-    if: github.ref == 'refs/heads/develop'
-
+    needs: [security-sca, security-sast]
+    if: github.ref == 'refs/heads/main'
     outputs:
       image_tag: ${{ steps.vars.outputs.tag }}
-
     steps:
       - uses: actions/checkout@v4
-
       - id: vars
         run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
@@ -103,45 +101,31 @@ jobs:
         id: ecr-login
 
       - name: Build image
-        run: |
-          docker build \
-            -t ${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }} \
-            ${{ env.SERVICE_DIR }}
+        run: docker build -t ${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }} ${{ env.SERVICE_DIR }}
+
+      - name: Trivy image scan (container)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }}
+          severity: CRITICAL
+          exit-code: 1
 
       - name: Push to ECR
         run: |
-          docker tag \
-            ${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }} \
-            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }}
-
-          docker push \
-            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }}
+          docker tag ${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }} ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }}
+          docker push ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.vars.outputs.tag }}
 
   update-gitops:
     name: Update GitOps repo
     runs-on: ubuntu-latest
     needs: build-and-push
-
     steps:
-      - name: Clone GitOps repository
-        run: |
-          git clone -b develop https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pcoutinhoo/togglemaster-gitops.git
-
-      - name: Update image tag
-        run: |
+      - run: git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/pcoutinhoo/togglemaster-gitops.git
+      - run: |
           cd togglemaster-gitops
-
-          sed -i \
-            "s|auth-service:.*|auth-service:${{ needs.build-and-push.outputs.image_tag }}|g" \
-            k8s/auth-service.yaml
-
+          sed -i "s|auth-service:.*|auth-service:${{ needs.build-and-push.outputs.image_tag }}|g" k8s/auth-service.yaml
           git config user.email "ci@togglemaster.com"
           git config user.name "GitHub Actions CI"
-
           git add k8s/auth-service.yaml
-
-          git commit \
-            -m "ci: atualiza auth-service para tag ${{ needs.build-and-push.outputs.image_tag }}" \
-            || echo "sem mudancas"
-
+          git commit -m "ci: atualiza auth-service para tag ${{ needs.build-and-push.outputs.image_tag }}" || echo "sem mudancas"
           git push
