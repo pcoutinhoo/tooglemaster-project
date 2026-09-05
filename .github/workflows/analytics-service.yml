@@ -127,4 +127,18 @@ jobs:
           git config user.name "GitHub Actions CI"
           git add k8s/analytics-service.yaml
           git commit -m "ci: atualiza analytics-service para tag ${{ needs.build-and-push.outputs.image_tag }}" || echo "sem mudancas"
-          git push
+
+          for attempt in 1 2 3 4 5; do
+            if git pull --rebase origin develop && git push origin develop; then
+              exit 0
+            fi
+
+            git rebase --abort 2>/dev/null || true
+
+            if [ "$attempt" -eq 5 ]; then
+              echo "Falha ao atualizar GitOps após 5 tentativas."
+              exit 1
+            fi
+
+            sleep $((attempt * 2))
+          done
