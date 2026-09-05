@@ -132,6 +132,7 @@ def sqs_worker_loop():
 
 app = Flask(__name__)
 
+
 @app.route('/health')
 def health():
     return jsonify({"status": "ok"})
