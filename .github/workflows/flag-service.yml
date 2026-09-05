@@ -3,10 +3,14 @@ name: flag-service CI/CD
 on:
   push:
     branches: [develop, main]
-    paths: ['flag-service/**']
+    paths:
+      - 'flag-service/**'
+      - '.github/workflows/flag-service.yml'
   pull_request:
     branches: [develop, main]
-    paths: ['flag-service/**']
+    paths:
+      - 'flag-service/**'
+      - '.github/workflows/flag-service.yml'
 
 env:
   AWS_REGION: us-east-1
@@ -41,7 +45,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install flake8
-      - run: flake8 . --max-line-length=120 --exit-zero
+      - run: flake8 . --max-line-length=120
 
   security-sca:
     name: Security Scan - SCA (Trivy fs)
