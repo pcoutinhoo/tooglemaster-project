@@ -3,10 +3,14 @@ name: targeting-service CI/CD
 on:
   push:
     branches: [develop, main]
-    paths: ['targeting-service/**']
+    paths:
+      - 'targeting-service/**'
+      - '.github/workflows/targeting-service.yml'
   pull_request:
     branches: [develop, main]
-    paths: ['targeting-service/**']
+    paths:
+      - 'targeting-service/**'
+      - '.github/workflows/targeting-service.yml'
 
 env:
   AWS_REGION: us-east-1
