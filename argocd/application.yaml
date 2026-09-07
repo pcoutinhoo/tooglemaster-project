@@ -5,14 +5,34 @@ metadata:
   namespace: argocd
 spec:
   project: default
+
   source:
     repoURL: https://github.com/pcoutinhoo/togglemaster-gitops.git
     targetRevision: develop
     path: k8s
+
   destination:
     server: https://kubernetes.default.svc
     namespace: togglemaster
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: analytics-service
+      namespace: togglemaster
+      jsonPointers:
+        - /spec/replicas
+
+    - group: apps
+      kind: Deployment
+      name: evaluation-service
+      namespace: togglemaster
+      jsonPointers:
+        - /spec/replicas
+
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - RespectIgnoreDifferences=true
