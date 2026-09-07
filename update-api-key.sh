@@ -1,54 +1,74 @@
 #!/bin/bash
-# update-api-key.sh
-# Roda DEPOIS que o auth-service estiver de pé e as migrations aplicadas.
-# Cria uma API key real via /auth/admin/keys, atualiza o secret do
-# evaluation-service automaticamente, e reinicia o deployment.
-#
-# Uso: bash update-api-key.sh <URL_DO_LOAD_BALANCER>
-# Ex:  bash update-api-key.sh http://abc123.elb.amazonaws.com
 
-set -e
+set -euo pipefail
 
-LB=$1
+LB="${1:-}"
+
 if [ -z "$LB" ]; then
   echo "Uso: bash update-api-key.sh <URL_DO_LOAD_BALANCER>"
-  echo "Pegue a URL com: kubectl get ingress -n togglemaster"
+  echo "Exemplo: bash update-api-key.sh http://abc123.elb.amazonaws.com"
   exit 1
 fi
 
-echo ">>> Criando API key via $LB/auth/admin/keys"
-RESPONSE=$(curl -s --request POST \
+echo ">>> Obtendo MASTER_KEY..."
+
+if [ -z "${MASTER_KEY:-}" ]; then
+  MASTER_KEY_B64=$(kubectl get secret auth-service-secret \
+    -n togglemaster \
+    -o jsonpath='{.data.MASTER_KEY}')
+
+  if [ -z "$MASTER_KEY_B64" ]; then
+    echo "!!! MASTER_KEY não encontrada no auth-service-secret."
+    exit 1
+  fi
+
+  MASTER_KEY=$(printf '%s' "$MASTER_KEY_B64" | base64 -d)
+fi
+
+echo "✓ MASTER_KEY disponível"
+
+echo ">>> Criando API key..."
+
+RESPONSE=$(curl \
+  --fail \
+  --silent \
+  --show-error \
+  --request POST \
   --url "$LB/auth/admin/keys" \
-  --header 'Authorization: Bearer master123' \
+  --header "Authorization: Bearer ${MASTER_KEY}" \
   --header 'Content-Type: application/json' \
-  --data '{"name": "tech-challenge-key"}')
-echo ">>> Resposta: $RESPONSE"
+  --data '{"name":"tech-challenge-key"}')
 
-echo ">>> Extraindo API KEY..."
-
-API_KEY=$(echo "$RESPONSE" | sed -n 's/.*"key":"\([^"]*\)".*/\1/p')
-
-echo ">>> API KEY encontrada: $API_KEY"
+API_KEY=$(printf '%s' "$RESPONSE" |
+  sed -n 's/.*"key"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 
 if [ -z "$API_KEY" ]; then
-  echo "!!! Não foi possível extrair a API key."
+  echo "!!! A API key não pôde ser extraída da resposta."
   exit 1
 fi
 
-echo ">>> API key gerada: $API_KEY"
-echo "$API_KEY" > api_key.txt
-echo ">>> Salva em api_key.txt para reutilizar nos testes"
+echo "✓ API key criada"
 
-API_KEY_B64=$(echo -n "$API_KEY" | base64 | tr -d '\n')
+API_KEY_B64=$(printf '%s' "$API_KEY" | base64 | tr -d '\n')
 
-echo ">>> Atualizando secret do evaluation-service"
-kubectl patch secret evaluation-service-secret -n togglemaster \
+echo ">>> Atualizando evaluation-service-secret..."
+
+kubectl patch secret evaluation-service-secret \
+  -n togglemaster \
   --type merge \
-  -p "{\"data\":{\"SERVICE_API_KEY\":\"${API_KEY_B64}\"}}"
+  -p "{\"data\":{\"SERVICE_API_KEY\":\"${API_KEY_B64}\"}}" >/dev/null
 
-echo ">>> Reiniciando evaluation-service"
-kubectl rollout restart deployment/evaluation-service -n togglemaster
-kubectl rollout status deployment/evaluation-service -n togglemaster --timeout=120s
+echo "✓ Secret atualizado"
 
-echo ">>> Pronto. Use esta key nos seus testes:"
-echo "$API_KEY"
+echo ">>> Reiniciando evaluation-service..."
+
+kubectl rollout restart \
+  deployment/evaluation-service \
+  -n togglemaster >/dev/null
+
+kubectl rollout status \
+  deployment/evaluation-service \
+  -n togglemaster \
+  --timeout=120s
+
+echo "✓ API key configurada com sucesso."
