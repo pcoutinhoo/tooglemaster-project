@@ -1,46 +1,81 @@
 #!/bin/bash
-# setup-backend.sh
-# Roda o bootstrap (cria bucket S3) e gera backend.tf, providers.tf e
 
-set -e
+set -euo pipefail
 
-echo ">>> Aplicando bootstrap (cria bucket S3)..."
-cd infra/bootstrap
-terraform init -input=false
-terraform apply -auto-approve
-BUCKET=$(terraform output -raw state_bucket_name)
-cd ../..
+AWS_REGION="${AWS_REGION:-us-east-1}"
 
-echo ">>> Bucket: $BUCKET"
+echo "=========================================="
+echo " ToggleMaster - Bootstrap do Backend"
+echo "=========================================="
 
-cat > infra/app/backend.tf << EOF
+echo ""
+echo ">>> [1/4] Validando sessão AWS Academy..."
+
+if ! aws sts get-caller-identity >/dev/null 2>&1; then
+  echo "!!! Credenciais AWS inválidas ou expiradas."
+  echo "!!! Inicie o Lab e configure as credenciais da AWS Academy."
+  exit 1
+fi
+
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+EXPECTED_BUCKET="togglemaster-tfstate-${ACCOUNT_ID}"
+
+echo "✓ AWS autenticada"
+echo "  Account ID: ${ACCOUNT_ID}"
+echo "  Região: ${AWS_REGION}"
+
+echo ""
+echo ">>> [2/4] Preparando bootstrap Terraform..."
+
+terraform -chdir=infra/bootstrap init -input=false
+
+# Cada conta AWS Academy mantém seu próprio state local do bootstrap.
+if terraform -chdir=infra/bootstrap workspace select "${ACCOUNT_ID}" >/dev/null 2>&1; then
+  echo "✓ Workspace da conta ${ACCOUNT_ID} encontrado."
+else
+  terraform -chdir=infra/bootstrap workspace new "${ACCOUNT_ID}"
+fi
+
+echo ""
+echo ">>> [3/4] Criando/validando bucket S3 do Terraform state..."
+
+terraform -chdir=infra/bootstrap apply \
+  -auto-approve \
+  -input=false \
+  -var="aws_region=${AWS_REGION}"
+
+BUCKET=$(terraform -chdir=infra/bootstrap output -raw state_bucket_name)
+
+if [ "${BUCKET}" != "${EXPECTED_BUCKET}" ]; then
+  echo "!!! Bucket inesperado."
+  echo "Esperado: ${EXPECTED_BUCKET}"
+  echo "Recebido: ${BUCKET}"
+  exit 1
+fi
+
+echo "✓ Backend S3 disponível: ${BUCKET}"
+
+echo ""
+echo ">>> [4/4] Gerando infra/app/backend.tf..."
+
+cat > infra/app/backend.tf <<BACKEND
 terraform {
   backend "s3" {
     bucket       = "${BUCKET}"
     key          = "togglemaster/terraform.tfstate"
-    region       = "us-east-1"
+    region       = "${AWS_REGION}"
     use_lockfile = true
   }
 }
-EOF
+BACKEND
 
-cat > infra/app/versions.tf << EOF
-terraform {
-  required_version = ">= 1.8.0"
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-EOF
-
-cat > infra/app/providers.tf << EOF
-provider "aws" {
-  region = var.aws_region
-}
-EOF
-
-echo ">>> infra/app/backend.tf, versions.tf e providers.tf gerados."
-echo ">>> Próximo passo: cd infra/app && terraform init"
+echo ""
+echo "=========================================="
+echo " ✓ BACKEND PRONTO"
+echo "=========================================="
+echo "Account: ${ACCOUNT_ID}"
+echo "Bucket:  ${BUCKET}"
+echo ""
+echo "Próximo passo:"
+echo "  cd infra/app"
+echo "  terraform init -reconfigure"
