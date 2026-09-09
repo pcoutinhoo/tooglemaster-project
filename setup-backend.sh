@@ -1,9 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
-
-AWS_REGION="${AWS_REGION:-us-east-1}"
-
 echo "=========================================="
 echo " ToggleMaster - Bootstrap do Backend"
 echo "=========================================="
@@ -12,69 +8,86 @@ echo ""
 echo ">>> [1/4] Validando sessão AWS Academy..."
 
 if ! aws sts get-caller-identity >/dev/null 2>&1; then
-  echo "!!! Credenciais AWS inválidas ou expiradas."
-  echo "!!! Inicie o Lab e configure as credenciais da AWS Academy."
-  exit 1
+  echo "✗ AWS não autenticada."
+  echo "Execute aws configure e configure o Session Token."
+  return 1 2>/dev/null || exit 1
 fi
 
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-EXPECTED_BUCKET="togglemaster-tfstate-${ACCOUNT_ID}"
+ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+AWS_REGION="${AWS_REGION:-us-east-1}"
+STATE_BUCKET="togglemaster-tfstate-${ACCOUNT_ID}"
 
 echo "✓ AWS autenticada"
 echo "  Account ID: ${ACCOUNT_ID}"
 echo "  Região: ${AWS_REGION}"
 
 echo ""
-echo ">>> [2/4] Preparando bootstrap Terraform..."
+echo ">>> [2/4] Criando/validando bucket S3..."
 
-terraform -chdir=infra/bootstrap init -input=false
+if aws s3api head-bucket \
+  --bucket "${STATE_BUCKET}" \
+  >/dev/null 2>&1; then
 
-# Cada conta AWS Academy mantém seu próprio state local do bootstrap.
-if terraform -chdir=infra/bootstrap workspace select "${ACCOUNT_ID}" >/dev/null 2>&1; then
-  echo "✓ Workspace da conta ${ACCOUNT_ID} encontrado."
+  echo "✓ Bucket já existe: ${STATE_BUCKET}"
+
 else
-  terraform -chdir=infra/bootstrap workspace new "${ACCOUNT_ID}"
+  echo "Bucket não encontrado. Criando..."
+
+  if [ "${AWS_REGION}" = "us-east-1" ]; then
+    aws s3api create-bucket \
+      --bucket "${STATE_BUCKET}" \
+      --region "${AWS_REGION}"
+  else
+    aws s3api create-bucket \
+      --bucket "${STATE_BUCKET}" \
+      --region "${AWS_REGION}" \
+      --create-bucket-configuration \
+      LocationConstraint="${AWS_REGION}"
+  fi
+
+  echo "✓ Bucket criado: ${STATE_BUCKET}"
 fi
 
 echo ""
-echo ">>> [3/4] Criando/validando bucket S3 do Terraform state..."
+echo ">>> [3/4] Configurando segurança e versionamento..."
 
-terraform -chdir=infra/bootstrap apply \
-  -auto-approve \
-  -input=false \
-  -var="aws_region=${AWS_REGION}"
+aws s3api put-bucket-versioning \
+  --bucket "${STATE_BUCKET}" \
+  --versioning-configuration Status=Enabled
 
-BUCKET=$(terraform -chdir=infra/bootstrap output -raw state_bucket_name)
+aws s3api put-public-access-block \
+  --bucket "${STATE_BUCKET}" \
+  --public-access-block-configuration \
+BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
 
-if [ "${BUCKET}" != "${EXPECTED_BUCKET}" ]; then
-  echo "!!! Bucket inesperado."
-  echo "Esperado: ${EXPECTED_BUCKET}"
-  echo "Recebido: ${BUCKET}"
-  exit 1
-fi
-
-echo "✓ Backend S3 disponível: ${BUCKET}"
+echo "✓ Versionamento habilitado"
+echo "✓ Acesso público bloqueado"
 
 echo ""
-echo ">>> [4/4] Gerando infra/app/backend.tf..."
+echo ">>> [4/4] Gerando backend Terraform..."
 
-cat > infra/app/backend.tf <<BACKEND
+mkdir -p infra/app
+
+cat > infra/app/backend.tf <<EOF
 terraform {
   backend "s3" {
-    bucket       = "${BUCKET}"
+    bucket       = "${STATE_BUCKET}"
     key          = "togglemaster/terraform.tfstate"
     region       = "${AWS_REGION}"
     use_lockfile = true
   }
 }
-BACKEND
+EOF
+
+echo "✓ infra/app/backend.tf gerado"
 
 echo ""
 echo "=========================================="
-echo " ✓ BACKEND PRONTO"
+echo " ✓ BACKEND CONFIGURADO COM SUCESSO!"
 echo "=========================================="
-echo "Account: ${ACCOUNT_ID}"
-echo "Bucket:  ${BUCKET}"
+echo ""
+echo "Bucket: ${STATE_BUCKET}"
+echo "State:  s3://${STATE_BUCKET}/togglemaster/terraform.tfstate"
 echo ""
 echo "Próximo passo:"
 echo "  cd infra/app"

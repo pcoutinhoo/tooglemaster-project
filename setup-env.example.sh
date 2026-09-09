@@ -3,7 +3,7 @@
 # Define as variáveis de ambiente necessárias para executar run-all.sh
 # Execute: source setup-env.sh
 
-set -e
+# Não usar set -e neste arquivo: ele é carregado com source e afetaria o shell atual.
 
 echo "=========================================="
 echo "  TOGGLEMASTER - Setup Environment"
@@ -28,7 +28,7 @@ done
 if [ ${#MISSING_TOOLS[@]} -gt 0 ]; then
   echo "!!! Ferramentas ausentes: ${MISSING_TOOLS[*]}"
   echo "!!! Instale antes de continuar."
-  exit 1
+  return 1 2>/dev/null || exit 1
 fi
 
 echo "✓ aws, terraform, kubectl, helm, docker OK"
@@ -43,7 +43,7 @@ echo ">>> [2/5] Validando credenciais AWS..."
 if ! aws sts get-caller-identity &>/dev/null; then
   echo "!!! Credenciais AWS inválidas ou não configuradas."
   echo "!!! Execute: aws configure (ou configure AWS_PROFILE/AWS_REGION)"
-  exit 1
+  return 1 2>/dev/null || exit 1
 fi
 
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
@@ -112,7 +112,7 @@ LAB_ROLE_ARN=$(aws iam get-role --role-name LabRole --query 'Role.Arn' --output 
 if [ -z "$LAB_ROLE_ARN" ]; then
   echo "!!! LabRole não encontrada."
   echo "!!! Se não estiver em AWS Academy, comente 'TF_VAR_lab_role_arn' em infra/app/main.tf"
-  exit 1
+  return 1 2>/dev/null || exit 1
 fi
 
 export TF_VAR_lab_role_arn="$LAB_ROLE_ARN"
