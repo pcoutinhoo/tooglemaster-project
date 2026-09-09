@@ -6,7 +6,12 @@ WITH_BACKEND=false
 echo "=== 0/3 Garantindo credenciais e variáveis ==="
 aws sts get-caller-identity > /dev/null || { echo "!!! Sessão AWS inválida. Renove no Academy antes de continuar."; exit 1; }
 export TF_VAR_lab_role_arn="$(aws iam get-role --role-name LabRole --query 'Role.Arn' --output text)"
-export TF_VAR_db_password="${TF_VAR_db_password:-SenhaMichuruca123}"
+
+# No destroy, o Terraform só precisa que a variável exista.
+# Se a senha real já estiver no ambiente, ela é reutilizada.
+# Caso contrário, usa um valor temporário apenas para validar a configuração.
+export TF_VAR_db_password="${TF_VAR_db_password:-TerraformDestroyOnly123!}"
+
 echo ">>> LabRole: $TF_VAR_lab_role_arn"
 
 echo "=== 1/3 Removendo Ingress/LB ==="

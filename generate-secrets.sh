@@ -16,8 +16,10 @@ TARGETING_DB=$(cd infra/app && terraform output -raw targeting_db_endpoint)
 REDIS_EP=$(cd infra/app && terraform output -raw redis_endpoint)
 SQS_URL=$(cd infra/app && terraform output -raw sqs_url)
 
-DB_PASS="${TF_VAR_db_password:-SenhaMichuruca123}"
-MASTER_KEY="master123"
+: "${TF_VAR_db_password:?TF_VAR_db_password não definida. Rode: source setup-env.sh}"
+: "${MASTER_KEY:?MASTER_KEY não definida. Rode: source setup-env.sh}"
+
+DB_PASS="$TF_VAR_db_password"
 
 AUTH_DB_HOST=$(echo "$AUTH_DB" | cut -d: -f1)
 FLAG_DB_HOST=$(echo "$FLAG_DB" | cut -d: -f1)
@@ -34,6 +36,7 @@ TARGETING_DB_B64=$(b64 "$TARGETING_URL")
 REDIS_B64=$(b64 "$REDIS_URL")
 SQS_B64=$(b64 "$SQS_URL")
 MASTER_KEY_B64=$(b64 "$MASTER_KEY")
+BOOTSTRAP_API_KEY_B64=$(b64 "bootstrap-pending")
 
 mkdir -p infra/app/k8s
 
@@ -75,7 +78,7 @@ type: Opaque
 data:
   REDIS_URL: ${REDIS_B64}
   AWS_SQS_URL: ${SQS_B64}
-  SERVICE_API_KEY: dGVtcA==
+  SERVICE_API_KEY: ${BOOTSTRAP_API_KEY_B64}
 ---
 apiVersion: v1
 kind: Secret
